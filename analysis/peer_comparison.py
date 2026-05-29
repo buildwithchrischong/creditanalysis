@@ -1,7 +1,6 @@
 import pandas as pd
 
 def compare_banks(df):
-
     df = df.copy()
 
     required_cols = [
@@ -13,11 +12,8 @@ def compare_banks(df):
         "PriceToBook"
     ]
 
-    # Ensure missing columns don't crash the app
-    for col in required_cols:
-        if col not in df.columns:
-            df[col] = None
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns: {missing}")
 
-    comparison = df[required_cols]
-
-    return comparison
+    return df[required_cols].copy()

@@ -1,3 +1,4 @@
+app.py:
 import streamlit as st
 import pandas as pd
 
@@ -5,7 +6,7 @@ from analysis.bank_data import fetch_bank_data
 from analysis.ratio_analysis import calculate_ratios
 from analysis.stress_test import stress_test
 from analysis.peer_comparison import compare_banks
-from analysis.charts import create_roe_chart, create_pe_chart
+from analysis.charts import create_roe_chart
 
 st.set_page_config(page_title="Credit Analysis Dashboard", layout="wide")
 
@@ -178,14 +179,123 @@ with col4:
 # -----------------------------
 # CHART
 # -----------------------------
-st.markdown("<h3>📈 Performance Charts</h3>", unsafe_allow_html=True)
+st.markdown("<h3>📈 ROE Chart</h3>", unsafe_allow_html=True)
+st.image(create_roe_chart(df))
 
-chart_col1, chart_col2 = st.columns(2)
+stress_test.py
+import pandas as pd
 
-with chart_col1:
-    st.markdown("### ROE Comparison")
-    st.pyplot(create_roe_chart(df))
 
-with chart_col2:
-    st.markdown("### P/E Ratio Comparison")
-    st.pyplot(create_pe_chart(df))
+def stress_test(df):
+    df["StressedROE"] = df["ROEPct"] * 0.7
+
+    return df
+
+
+if __name__ == "__main__":
+    df = pd.read_csv("backend/data/bank_data.csv")
+
+    df["ROEPct"] = df["ROE"] * 100
+
+    stressed = stress_test(df)
+
+    print(stressed[["Bank", "ROEPct", "StressedROE"]])
+
+ratio_analysis.py
+import pandas as pd
+
+def calculate_ratios(df):
+
+    df = df.copy()
+
+    df["ROEPct"] = df["NetIncome"] / df["TotalEquity"]
+    df["ROAPct"] = df["NetIncome"] / df["TotalAssets"]
+
+    return df
+
+peer_comparison.py
+import pandas as pd
+
+def compare_banks(df):
+
+    df = df.copy()
+
+    required_cols = [
+        "Bank",
+        "ROEPct",
+        "ROAPct",
+        "PE",
+        "DividendYield",
+        "PriceToBook"
+    ]
+
+    # Ensure missing columns don't crash the app
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = None
+
+    comparison = df[required_cols]
+
+    return comparison
+
+charts.py
+import os
+import matplotlib.pyplot as plt
+
+def create_roe_chart(df):
+
+    os.makedirs("exports", exist_ok=True)
+
+    path = "exports/roe_chart.png"
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(df["Bank"], df["ROEPct"])
+
+    plt.title("ROE Comparison")
+    plt.ylabel("ROE %")
+
+    plt.tight_layout()
+    plt.savefig(path)
+    plt.close()
+
+    return path
+
+bank_data.py
+import pandas as pd
+
+EXCEL_PATH = "data/bank_data.xlsx"
+
+def fetch_bank_data():
+
+    df = pd.read_excel(EXCEL_PATH, sheet_name="banks")
+
+    return df
+
+__init__.py
+import pandas as pd
+
+
+def stress_test(df):
+    df["StressedROE"] = df["ROEPct"] * 0.7
+
+    return df
+
+
+if __name__ == "__main__":
+    df = pd.read_csv("backend/data/bank_data.csv")
+
+    df["ROEPct"] = df["ROE"] * 100
+
+    stressed = stress_test(df)
+
+    print(stressed[["Bank", "ROEPct", "StressedROE"]])
+
+Creditanalysis
+> .venv
+> analysis
+   >- __init__.py
+   >- bank_data.py, charts.py, peer_comparison.py, ratio_analysis.py, stress_test.py
+> data
+    >- bank_data.xlsx
+> frontend
+    >- app.py

@@ -1,20 +1,20 @@
-import os
 import matplotlib.pyplot as plt
 
 def create_roe_chart(df):
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    os.makedirs("exports", exist_ok=True)
+    ax.bar(df["Bank"], df["ROEPct"] * 100)  # convert for display only
+    ax.set_title("ROE Comparison")
+    ax.set_ylabel("ROE (%)")
 
-    path = "exports/roe_chart.png"
+    return fig
 
-    plt.figure(figsize=(10, 6))
-    plt.bar(df["Bank"], df["ROEPct"])
 
-    plt.title("ROE Comparison")
-    plt.ylabel("ROE %")
+def create_pe_chart(df):
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    plt.tight_layout()
-    plt.savefig(path)
-    plt.close()
+    ax.bar(df["Bank"], df["PE"])
+    ax.set_title("P/E Ratio Comparison")
+    ax.set_ylabel("P/E Ratio")
 
-    return path
+    return fig
