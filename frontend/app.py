@@ -1,5 +1,9 @@
 import streamlit as st
 import pandas as pd
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from analysis.bank_data import fetch_bank_data
 from analysis.ratio_analysis import calculate_ratios
