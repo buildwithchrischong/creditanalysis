@@ -30,7 +30,7 @@ st.title("Personal - Credit Analysis Dashboard")
 st.divider()
 
 # -------------------------------------------------
-# FORMAT FUNCTION
+# FORMAT HELPERS
 # -------------------------------------------------
 def format_market_cap(value):
     if value is None:
@@ -44,57 +44,59 @@ def format_market_cap(value):
         return f"${value / 1_000_000:.2f}M"
 
 # -------------------------------------------------
-# LOAD DATA
+# LOAD DATA (RAW LAYER)
 # -------------------------------------------------
-df = fetch_bank_data()
-df["MarketCapFormatted"] = df["MarketCap"].apply(format_market_cap)
-
-df = calculate_ratios(df)
-stressed = stress_test(df)
-peer = compare_banks(df)
+df_raw = fetch_bank_data()
 
 # -------------------------------------------------
-# KPI METRICS
+# CALCULATION LAYER
 # -------------------------------------------------
-avg_pe = df["PE"].mean()
-avg_pb = df["PriceToBook"].mean()
-avg_div = df["DividendYield"].mean()
-avg_stress = df["StressedROE"].mean()
+df_calc = calculate_ratios(df_raw.copy())
+df_stress = stress_test(df_calc.copy())
+df_peer = compare_banks(df_calc.copy())
 
-highest_pe_bank = df.loc[df["PE"].idxmax(), "Bank"]
-highest_pe_value = df["PE"].max()
-
-best_stress_bank = df.loc[df["StressedROE"].idxmax(), "Bank"]
-best_stress_value = df["StressedROE"].max()
-
-highest_div_bank = df.loc[df["DividendYield"].idxmax(), "Bank"]
-highest_div_value = df["DividendYield"].max()
-
-highest_pb_bank = df.loc[df["PriceToBook"].idxmax(), "Bank"]
-highest_pb_value = df["PriceToBook"].max()
+# merge stress back into calc for convenience
+df_calc["StressedROE"] = df_stress["StressedROE"]
 
 # -------------------------------------------------
-# FORMATTED TABLES
+# KPI CALCULATIONS (ALWAYS USE RAW NUMBERS)
 # -------------------------------------------------
-df_display = df.copy()
-df_display = df_display.rename(
-    columns={"MarketCapFormatted": "Market Cap (SGD)"}
-)
+avg_pe = df_calc["PE"].mean()
+avg_pb = df_calc["PriceToBook"].mean()
+avg_div = df_calc["DividendYield"].mean()
+avg_stress = df_calc["StressedROE"].mean()
+
+highest_pe_bank = df_calc.loc[df_calc["PE"].idxmax(), "Bank"]
+highest_pe_value = df_calc["PE"].max()
+
+best_stress_bank = df_calc.loc[df_calc["StressedROE"].idxmax(), "Bank"]
+best_stress_value = df_calc["StressedROE"].max()
+
+highest_div_bank = df_calc.loc[df_calc["DividendYield"].idxmax(), "Bank"]
+highest_div_value = df_calc["DividendYield"].max()
+
+highest_pb_bank = df_calc.loc[df_calc["PriceToBook"].idxmax(), "Bank"]
+highest_pb_value = df_calc["PriceToBook"].max()
+
+# -------------------------------------------------
+# DISPLAY LAYER (SAFE FORMATTING ONLY)
+# -------------------------------------------------
+
+df_display = df_calc.copy()
+df_display["Market Cap (SGD)"] = df_display["MarketCap"].apply(format_market_cap)
 
 df_display["PE"] = df_display["PE"].map("{:.2f}".format)
 df_display["PriceToBook"] = df_display["PriceToBook"].map("{:.2f}".format)
 df_display["DividendYield"] = df_display["DividendYield"].map("{:.2%}".format)
 
-df_ratio_display = df.copy()
-df_ratio_display["ROEPct"] = df_ratio_display["ROEPct"].map("{:.2%}".format)
-df_ratio_display["ROAPct"] = df_ratio_display["ROAPct"].map("{:.2%}".format)
+df_ratio_display = df_calc.copy()
+df_ratio_display["ROE (%)"] = df_ratio_display["ROEPct"].map("{:.2%}".format)
+df_ratio_display["ROA (%)"] = df_ratio_display["ROAPct"].map("{:.2%}".format)
 
-stressed_display = stressed.copy()
-stressed_display["StressedROE"] = stressed_display["StressedROE"].map("{:.2%}".format)
+stressed_display = df_calc.copy()
+stressed_display["Stressed ROE (%)"] = stressed_display["StressedROE"].map("{:.2%}".format)
 
-peer_display = peer.copy()
-peer_display["ROEPct"] = peer_display["ROEPct"].map("{:.2%}".format)
-peer_display["ROAPct"] = peer_display["ROAPct"].map("{:.2%}".format)
+peer_display = df_peer.copy()
 peer_display["PE"] = peer_display["PE"].map("{:.2f}".format)
 peer_display["PriceToBook"] = peer_display["PriceToBook"].map("{:.2f}".format)
 peer_display["DividendYield"] = peer_display["DividendYield"].map("{:.2%}".format)
@@ -106,21 +108,16 @@ tab_memo, tab_analysis = st.tabs(
     ["📝 Credit Memorandum", "📊 Analysis"]
 )
 
+
 # =================================================
-# CREDIT MEMORANDUM TAB
+# CREDIT MEMORANDUM
 # =================================================
 with tab_memo:
 
-    selected_bank = st.selectbox(
-        "Select Bank",
-        df["Bank"]
-    )
+    selected_bank = st.selectbox("Select Bank", df_calc["Bank"])
 
-    bank = df[df["Bank"] == selected_bank].iloc[0]
+    bank = df_calc[df_calc["Bank"] == selected_bank].iloc[0]
 
-    # -------------------------------------------------
-    # CREDIT RATING LOGIC (MUST BE OUTSIDE MARKDOWN)
-    # -------------------------------------------------
     rating = (
         "strong" if bank["ROEPct"] > 0.10
         else "stable" if bank["ROEPct"] > 0.07
@@ -129,14 +126,11 @@ with tab_memo:
 
     color = "#006400" if rating == "strong" else "#FFD700"
 
-    # -------------------------------------------------
-    # EXECUTIVE SUMMARY
-    # -------------------------------------------------
     st.markdown(
         f"""
 ### Executive Summary
 
-**Market cap of:** SGD${bank['MarketCap'] / 1e9:.2f}B  
+**Market cap:** SGD${bank['MarketCap'] / 1e9:.2f}B  
 **ROE:** {bank['ROEPct']:.2%}  
 **ROA:** {bank['ROAPct']:.2%}  
 **P/E:** {bank['PE']:.2f}x  
@@ -161,15 +155,7 @@ Future enhancements will incorporate:
 - Funding structure and deposit stability
 
 As a result, the current rating should be interpreted as a **preliminary internal score rather than a formal agency rating**.
-""",
-        unsafe_allow_html=True
-    )
 
-    # -------------------------------------------------
-    # COLORED FINAL LINE (SEPARATE BLOCK)
-    # -------------------------------------------------
-    st.markdown(
-        f"""
 
 ---
 
@@ -177,8 +163,12 @@ As a result, the current rating should be interpreted as a **preliminary interna
 
 Overall, the credit profile is assessed as <span style="color:{color}; font-weight:700">{rating.upper()}</span>, supported by its earnings quality and valuation multiples.
 """,
+
+
         unsafe_allow_html=True
     )
+
+
 
 # =================================================
 # ANALYSIS TAB
@@ -236,7 +226,7 @@ with tab_analysis:
     with col2:
         st.markdown("### Profitability Ratios")
         st.dataframe(
-            df_ratio_display[["Bank", "ROEPct", "ROAPct"]],
+            df_ratio_display[["Bank", "ROE (%)", "ROA (%)"]],
             use_container_width=True,
             hide_index=True
         )
@@ -246,7 +236,7 @@ with tab_analysis:
     with col3:
         st.markdown("### Stress Test")
         st.dataframe(
-            stressed_display[["Bank", "StressedROE"]],
+            stressed_display[["Bank", "Stressed ROE (%)"]],
             use_container_width=True,
             hide_index=True
         )
@@ -268,8 +258,8 @@ with tab_analysis:
 
     with chart_col1:
         st.markdown("### ROE Comparison")
-        st.pyplot(create_roe_chart(df))
+        st.pyplot(create_roe_chart(df_calc))
 
     with chart_col2:
         st.markdown("### P/E Comparison")
-        st.pyplot(create_pe_chart(df))
+        st.pyplot(create_pe_chart(df_calc))
