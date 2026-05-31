@@ -114,7 +114,7 @@ tab_memo, tab_analysis = st.tabs(
 # =================================================
 with tab_memo:
 
-    selected_bank = st.selectbox("Select Bank", df_calc["Bank"])
+    selected_bank = st.selectbox("Select Company", df_calc["Bank"])
 
     bank = df_calc[df_calc["Bank"] == selected_bank].iloc[0]
 
