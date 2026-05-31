@@ -119,9 +119,19 @@ with tab_memo:
     bank = df[df["Bank"] == selected_bank].iloc[0]
 
     # -------------------------------------------------
-    # METRICS
+    # CREDIT RATING LOGIC (MUST BE OUTSIDE MARKDOWN)
     # -------------------------------------------------
+    rating = (
+        "strong" if bank["ROEPct"] > 0.10
+        else "stable" if bank["ROEPct"] > 0.07
+        else "weak"
+    )
 
+    color = "#006400" if rating == "strong" else "#FFD700"
+
+    # -------------------------------------------------
+    # EXECUTIVE SUMMARY
+    # -------------------------------------------------
     st.markdown(
         f"""
 ### Executive Summary
@@ -132,25 +142,42 @@ with tab_memo:
 **P/E:** {bank['PE']:.2f}x  
 **P/B:** {bank['PriceToBook']:.2f}x  
 **Dividend yield:** {bank['DividendYield']:.2%}  
-**Stressed ROE:** {bank['StressedROE']:.2%}  
-
----
-
-**Credit Rating:** {"Strong" if bank["ROEPct"] > 0.10 else "Stable" if bank["ROEPct"] > 0.07 else "Weak"}
+**Stressed ROE:** {bank['StressedROE']:.2%}
 
 ---
 
 ### Credit View
 
-This analysis evaluates the bank’s profitability, valuation, and resilience under stress conditions.
+This analysis evaluates the company's profitability, valuation, and resilience under stress conditions.
 
-The bank demonstrates:
-- Stable earnings power through ROE consistency
-- Moderate leverage reflected in ROA
-- Resilience under a 30% earnings stress scenario
+The current credit rating is primarily driven by Return on Equity (ROE) and profitability metrics. However, this is a simplified proxy model and does not yet reflect a full institutional credit assessment.
 
-Overall, the credit profile is assessed as **{"strong" if bank["ROEPct"] > 0.10 else "stable" if bank["ROEPct"] > 0.07 else "weak"}**, supported by its earnings quality and valuation multiples.
-"""
+Future enhancements will incorporate:
+- Capital adequacy metrics
+- Asset quality indicators (e.g. non-performing loans)
+- Liquidity coverage ratios
+- Earnings volatility over time
+- Macroeconomic sensitivity
+- Funding structure and deposit stability
+
+As a result, the current rating should be interpreted as a **preliminary internal score rather than a formal agency rating**.
+""",
+        unsafe_allow_html=True
+    )
+
+    # -------------------------------------------------
+    # COLORED FINAL LINE (SEPARATE BLOCK)
+    # -------------------------------------------------
+    st.markdown(
+        f"""
+
+---
+
+### Final Assessment
+
+Overall, the credit profile is assessed as <span style="color:{color}; font-weight:700">{rating.upper()}</span>, supported by its earnings quality and valuation multiples.
+""",
+        unsafe_allow_html=True
     )
 
 # =================================================
