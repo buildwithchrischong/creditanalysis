@@ -4,7 +4,7 @@ import sys
 import os
 
 # -------------------------------------------------
-# PATH FIX (so Streamlit can find /analysis modules)
+# PATH FIX
 # -------------------------------------------------
 sys.path.append(
     os.path.abspath(
@@ -43,12 +43,10 @@ def format_market_cap(value):
     else:
         return f"${value / 1_000_000:.2f}M"
 
-
 # -------------------------------------------------
 # LOAD DATA
 # -------------------------------------------------
 df = fetch_bank_data()
-
 df["MarketCapFormatted"] = df["MarketCap"].apply(format_market_cap)
 
 df = calculate_ratios(df)
@@ -76,7 +74,7 @@ highest_pb_bank = df.loc[df["PriceToBook"].idxmax(), "Bank"]
 highest_pb_value = df["PriceToBook"].max()
 
 # -------------------------------------------------
-# DISPLAY TABLES (FORMATTED COPIES)
+# FORMATTED TABLES
 # -------------------------------------------------
 df_display = df.copy()
 df_display = df_display.rename(
@@ -102,94 +100,149 @@ peer_display["PriceToBook"] = peer_display["PriceToBook"].map("{:.2f}".format)
 peer_display["DividendYield"] = peer_display["DividendYield"].map("{:.2%}".format)
 
 # -------------------------------------------------
-# KPI ROW
+# TABS
 # -------------------------------------------------
-col1, col2, col3, col4 = st.columns(4)
+tab_memo, tab_analysis = st.tabs(
+    ["📝 Credit Memorandum", "📊 Analysis"]
+)
 
-with col1:
-    st.metric(
-        "Highest PE",
-        f"{highest_pe_value:.2f}",
-        delta=f"{highest_pe_bank} | Avg {avg_pe:.2f}"
+# =================================================
+# CREDIT MEMORANDUM TAB
+# =================================================
+with tab_memo:
+
+    selected_bank = st.selectbox(
+        "Select Bank",
+        df["Bank"]
     )
 
-with col2:
-    st.metric(
-        "Best Stress ROE",
-        f"{best_stress_value:.2%}",
-        delta=f"{best_stress_bank} | Avg {avg_stress:.2%}"
+    bank = df[df["Bank"] == selected_bank].iloc[0]
+
+    # -------------------------------------------------
+    # METRICS
+    # -------------------------------------------------
+
+    st.markdown(
+        f"""
+### Executive Summary
+
+**Market cap of:** SGD${bank['MarketCap'] / 1e9:.2f}B  
+**ROE:** {bank['ROEPct']:.2%}  
+**ROA:** {bank['ROAPct']:.2%}  
+**P/E:** {bank['PE']:.2f}x  
+**P/B:** {bank['PriceToBook']:.2f}x  
+**Dividend yield:** {bank['DividendYield']:.2%}  
+**Stressed ROE:** {bank['StressedROE']:.2%}  
+
+---
+
+**Credit Rating:** {"Strong" if bank["ROEPct"] > 0.10 else "Stable" if bank["ROEPct"] > 0.07 else "Weak"}
+
+---
+
+### Credit View
+
+This analysis evaluates the bank’s profitability, valuation, and resilience under stress conditions.
+
+The bank demonstrates:
+- Stable earnings power through ROE consistency
+- Moderate leverage reflected in ROA
+- Resilience under a 30% earnings stress scenario
+
+Overall, the credit profile is assessed as **{"strong" if bank["ROEPct"] > 0.10 else "stable" if bank["ROEPct"] > 0.07 else "weak"}**, supported by its earnings quality and valuation multiples.
+"""
     )
 
-with col3:
-    st.metric(
-        "Highest Dividend Yield",
-        f"{highest_div_value:.2%}",
-        delta=f"{highest_div_bank} | Avg {avg_div:.2%}"
-    )
+# =================================================
+# ANALYSIS TAB
+# =================================================
+with tab_analysis:
 
-with col4:
-    st.metric(
-        "Highest P/B Ratio",
-        f"{highest_pb_value:.2f}",
-        delta=f"{highest_pb_bank} | Avg {avg_pb:.2f}"
-    )
+    st.subheader("Dashboard Overview")
 
-st.divider()
+    # KPI ROW
+    col1, col2, col3, col4 = st.columns(4)
 
-# -------------------------------------------------
-# TABLES
-# -------------------------------------------------
-col1, col2 = st.columns(2)
+    with col1:
+        st.metric(
+            "Highest PE",
+            f"{highest_pe_value:.2f}",
+            delta=f"{highest_pe_bank} | Avg {avg_pe:.2f}"
+        )
 
-with col1:
-    st.markdown("### Bank Overview")
-    st.dataframe(
-        df_display[
-            ["Bank", "Market Cap (SGD)", "PE", "PriceToBook", "DividendYield"]
-        ],
-        use_container_width=True,
-        hide_index=True
-    )
+    with col2:
+        st.metric(
+            "Best Stress ROE",
+            f"{best_stress_value:.2%}",
+            delta=f"{best_stress_bank} | Avg {avg_stress:.2%}"
+        )
 
-with col2:
-    st.markdown("### Profitability Ratios")
-    st.dataframe(
-        df_ratio_display[["Bank", "ROEPct", "ROAPct"]],
-        use_container_width=True,
-        hide_index=True
-    )
+    with col3:
+        st.metric(
+            "Highest Dividend Yield",
+            f"{highest_div_value:.2%}",
+            delta=f"{highest_div_bank} | Avg {avg_div:.2%}"
+        )
 
-col3, col4 = st.columns(2)
+    with col4:
+        st.metric(
+            "Highest P/B Ratio",
+            f"{highest_pb_value:.2f}",
+            delta=f"{highest_pb_bank} | Avg {avg_pb:.2f}"
+        )
 
-with col3:
-    st.markdown("### Stress Test")
-    st.dataframe(
-        stressed_display[["Bank", "StressedROE"]],
-        use_container_width=True,
-        hide_index=True
-    )
+    st.divider()
 
-with col4:
-    st.markdown("### Peer Comparison")
-    st.dataframe(
-        peer_display,
-        use_container_width=True,
-        hide_index=True
-    )
+    # TABLES
+    col1, col2 = st.columns(2)
 
-st.divider()
+    with col1:
+        st.markdown("### Bank Overview")
+        st.dataframe(
+            df_display[
+                ["Bank", "Market Cap (SGD)", "PE", "PriceToBook", "DividendYield"]
+            ],
+            use_container_width=True,
+            hide_index=True
+        )
 
-# -------------------------------------------------
-# CHARTS (FIXED)
-# -------------------------------------------------
-st.markdown("### 📈 Performance Charts")
+    with col2:
+        st.markdown("### Profitability Ratios")
+        st.dataframe(
+            df_ratio_display[["Bank", "ROEPct", "ROAPct"]],
+            use_container_width=True,
+            hide_index=True
+        )
 
-chart_col1, chart_col2 = st.columns(2)
+    col3, col4 = st.columns(2)
 
-with chart_col1:
-    st.markdown("### ROE Comparison")
-    st.pyplot(create_roe_chart(df))   
+    with col3:
+        st.markdown("### Stress Test")
+        st.dataframe(
+            stressed_display[["Bank", "StressedROE"]],
+            use_container_width=True,
+            hide_index=True
+        )
 
-with chart_col2:
-    st.markdown("### P/E Comparison")
-    st.pyplot(create_pe_chart(df))   
+    with col4:
+        st.markdown("### Peer Comparison")
+        st.dataframe(
+            peer_display,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    st.divider()
+
+    # CHARTS
+    st.markdown("### 📈 Performance Charts")
+
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        st.markdown("### ROE Comparison")
+        st.pyplot(create_roe_chart(df))
+
+    with chart_col2:
+        st.markdown("### P/E Comparison")
+        st.pyplot(create_pe_chart(df))
