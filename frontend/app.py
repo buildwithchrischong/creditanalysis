@@ -357,4 +357,3 @@ with memo_tab:
         "Credit Assessment",
         recommendation
     )
-```
