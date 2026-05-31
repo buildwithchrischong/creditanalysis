@@ -138,6 +138,14 @@ with tab_memo:
 **Dividend yield:** {bank['DividendYield']:.2%}  
 **Stressed ROE:** {bank['StressedROE']:.2%}
 
+
+---
+
+### Final Assessment
+
+Overall, the credit profile is assessed as <span style="color:{color}; font-weight:700">{rating.upper()}</span>, supported by its earnings quality and valuation multiples.
+
+
 ---
 
 ### Credit View
@@ -156,12 +164,6 @@ Future enhancements will incorporate:
 
 As a result, the current rating should be interpreted as a **preliminary internal score rather than a formal agency rating**.
 
-
----
-
-### Final Assessment
-
-Overall, the credit profile is assessed as <span style="color:{color}; font-weight:700">{rating.upper()}</span>, supported by its earnings quality and valuation multiples.
 """,
 
 
